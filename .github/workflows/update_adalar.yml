@@ -1,0 +1,42 @@
+name: Adalar Vapur Seferleri - Günlük Güncelleme
+
+on:
+  schedule:
+    - cron: '0 2 * * *'   # Her gece 02:00 UTC = 05:00 İstanbul
+  workflow_dispatch:        # Manuel tetikleme için
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Repoyu indir
+        uses: actions/checkout@v4
+
+      - name: Python kur
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Bağımlılıkları yükle
+        run: pip install requests beautifulsoup4 anthropic
+
+      - name: Crawl et ve HTML oluştur
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TEMPLATE_HTML: Adalar_fetched_pages.HTML
+          OUTPUT_HTML: docs/index.html
+        run: python3 crawl_and_build.py
+
+      - name: Değişiklikleri commit et
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/index.html
+          git diff --staged --quiet || git commit -m "chore: günlük tarife güncellemesi $(date +'%d.%m.%Y')"
+          git push
